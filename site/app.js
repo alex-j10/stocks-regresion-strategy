@@ -431,7 +431,7 @@
       return { level: "good", icon: "✅", title: "Comprar", text: `Está en zona de compra (${where}; compra en ${fmt(row.buy_sigma, 0)}σ) y tu IA ve una caída temporal sin riesgo de quiebra. Entre el 5 % y el 10 % de la cartera; objetivo: la recta en ${fmt(row.base)} $ (${pct(row.base / row.close - 1)}).` };
     }
     if (row.signal === "vigilar")
-      return { level: "wait", icon: "⏳", title: "Esperar a −4σ", text: `Los fundamentales dan luz verde, pero al no ser Top ${state.cfg.top_tier_count} la estrategia espera a −4σ: ${fmt(row.bands["-4"])} $ (${pct(row.bands["-4"] / row.close - 1)} desde el precio actual).` };
+      return { level: "wait", icon: "⏳", title: "Esperar a −4σ", text: `${caution ? `Luz verde con dudas (${desc}): conviene confirmar la tesis antes de entrar.` : "Los fundamentales dan luz verde."} Al no ser Top ${state.cfg.top_tier_count}, la estrategia espera a −4σ: ${fmt(row.bands["-4"])} $ (${pct(row.bands["-4"] / row.close - 1)} desde el precio actual)${caution ? "; si llega, mejor con una posición pequeña (≈5 %)" : ""}.` };
     if (row.signal === "descartada" || row.excluded?.length)
       return { level: "bad", icon: "⛔", title: "No cumple las reglas", text: `Los fundamentales están bien, pero se descarta por: ${row.excluded.join("; ")}.` };
     return { level: "wait", icon: "⏳", title: "Sin señal", text: `Los fundamentales están bien, pero el precio (${where}) no está en zona de compra (${fmt(row.buy_sigma, 0)}σ).` };
