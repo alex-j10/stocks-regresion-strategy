@@ -415,7 +415,8 @@ def main():
 
     # Fundamentales: señales + posiciones abiertas
     rng = np.random.default_rng(1)
-    need = list(dict.fromkeys([r["ticker"] for r in signals] + [t for t in open_pos if t in by_ticker]))
+    near = [r["ticker"] for r in sorted(rows, key=lambda r: r["sigma"]) if r["sigma"] <= cfg.get("fundamentals_sigma", -2)]
+    need = list(dict.fromkeys([r["ticker"] for r in signals] + [t for t in open_pos if t in by_ticker] + near))
     prompts_sig, prompts_rev = [], []
     for t in need:
         c = by_ticker[t]
@@ -485,6 +486,7 @@ def main():
                                     "Antes de comprar, pasa el análisis fundamental a tu IA."))
 
     meta = dict(updated=datetime.now(timezone.utc).isoformat(timespec="minutes"), source=source,
+                prompt_header=PROMPT_HEADER, review_header=REVIEW_HEADER,
                 demo=args.demo, config=cfg, universe_count=len(universe), computed=len(rows),
                 short_history=short, missing=sorted({u["ticker"] for u in universe} - set(prices)))
     rows_sorted = sorted(rows, key=lambda r: r["sigma"])

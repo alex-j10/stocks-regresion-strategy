@@ -379,6 +379,22 @@
   }
 
 
+
+  // Prompt sin fundamentales descargados: datos del canal + la IA busca el resto en la web
+  function lightPrompt(r, pos) {
+    const m = state.data.meta;
+    const head = pos ? m.review_header : m.prompt_header;
+    const lines = [
+      `## ${r.ticker} — ${r.name}`,
+      `Sector: ${r.sector || "n/d"} / ${r.industry || "n/d"}. Capitalización: ${money(r.market_cap)}${r.top_tier ? ` (Top ${r.tier_rank} por capitalización)` : ""}.`,
+      `Precio ${fmt(r.close)} $, a ${sigTxt(r.sigma)} desviaciones típicas de su recta de regresión de ${r.length} sesiones (recta ${fmt(r.base)} $, −3σ ${fmt(r.bands["-3"])} $, −4σ ${fmt(r.bands["-4"])} $). Tendencia del canal: ${pct(r.trend_pct / 100)} anual.`,
+      `Señal del indicador hoy: ${r.signal ? r.signal.toUpperCase() : "ninguna (no está en zona de compra)"}${r.excluded?.length ? ` — descartada por: ${r.excluded.join("; ")}` : ""}.`,
+    ];
+    if (pos) lines.push(`Posición abierta desde ${pos.entry_date} a ${fmt(Number(pos.entry_price))} $.`);
+    lines.push("", "No tengo los datos financieros descargados: búscalos tú en la web (últimos resultados trimestrales y anuales, deuda, caja, EBITDA, flujo de caja libre, márgenes, previsiones, opinión de analistas y noticias recientes) antes de responder.");
+    return (head || "") + "\n" + lines.join("\n");
+  }
+
   // ================================================================ veredictos de la IA
   const norm = (x) => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[*_`#>]/g, "").trim().toUpperCase();
   const pick = (val, opts) => { const n = norm(val); return opts.find((o) => n.startsWith(o)) || opts.find((o) => n.includes(o)) || null; };
@@ -581,7 +597,15 @@
     const ts = await getJSON(`data/t/${encodeURIComponent(r.ticker)}.json`);
     drawCharts(ts, pos);
     if (r.has_fundamentals) renderFund(await getJSON(`data/f/${encodeURIComponent(r.ticker)}.json`), !!pos);
-    else if (r.signal) $("#d-fund").innerHTML = `<p class="muted">No se pudieron obtener los fundamentales hoy.</p>`;
+    else {
+      $("#d-fund").innerHTML = `<div class="ai-row">
+          <button class="btn primary" id="copy-one">Copiar análisis para mi IA</button>
+          ${pos ? `<button class="btn" id="copy-rev">Copiar revisión trimestral</button>` : ""}
+          <span class="muted small">Sin fundamentales descargados para esta empresa: el prompt pide a tu IA que los busque en la web.</span>
+        </div>`;
+      $("#copy-one").onclick = () => copy(lightPrompt(r, null));
+      $("#copy-rev")?.addEventListener("click", () => copy(lightPrompt(r, pos)));
+    }
   }
 
   const BANDS = [

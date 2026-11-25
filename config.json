@@ -3,8 +3,14 @@
   "length_bars": 2500,
   "download_years": 15,
   "sigma_history_years": 5,
-  "bands_up": [1, 2],
-  "bands_down": [3, 4],
+  "bands_up": [
+    1,
+    2
+  ],
+  "bands_down": [
+    3,
+    4
+  ],
   "top_tier_count": 10,
   "buy_sigma_top_tier": -3,
   "buy_sigma_other": -4,
@@ -18,5 +24,6 @@
   "max_positions": 20,
   "max_news_per_company": 8,
   "github_issue_alerts": true,
-  "custom_domain": ""
+  "custom_domain": "",
+  "fundamentals_sigma": -2
 }
