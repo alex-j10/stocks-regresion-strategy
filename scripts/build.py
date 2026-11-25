@@ -78,6 +78,15 @@ Haz un análisis fundamental de cada empresa, pero NO un análisis genérico: ya
 Si el daño no es permanente y no hay riesgo de quiebra, es luz verde.
 Termina con una tabla: ticker | causa de la caída | temporal/permanente | riesgo de quiebra (bajo/medio/alto) | luz verde (sí/no) | confianza.
 
+MUY IMPORTANTE: al final de la respuesta, añade para CADA empresa este bloque exacto, sin cambiar las claves ni los corchetes y eligiendo uno de los valores indicados:
+[[VEREDICTO]]
+TICKER: <ticker>
+CAIDA: TEMPORAL | PERMANENTE | DUDOSA
+QUIEBRA: BAJO | MEDIO | ALTO
+LUZ_VERDE: SI | NO
+MOTIVO: <una o dos frases con la causa de la caída y por qué>
+[[FIN]]
+
 Datos (generados automáticamente; "n/d" = no disponible):
 """
 
@@ -87,6 +96,16 @@ Revisión trimestral de posiciones abiertas (estrategia de reversión a la recta
 1) ¿Sigue siendo TEMPORAL el motivo de la caída, o ahora parece un daño PERMANENTE al negocio?
 2) ¿Ha aparecido riesgo de quiebra o de problemas graves de solvencia?
 Termina con una tabla: ticker | ¿ha cambiado algo desde la compra? | temporal/permanente | riesgo de quiebra | mantener/vender | confianza.
+
+MUY IMPORTANTE: al final de la respuesta, añade para CADA empresa este bloque exacto, sin cambiar las claves ni los corchetes y eligiendo uno de los valores indicados:
+[[VEREDICTO]]
+TICKER: <ticker>
+CAIDA: TEMPORAL | PERMANENTE | DUDOSA
+QUIEBRA: BAJO | MEDIO | ALTO
+CAMBIO: SI | NO
+MANTENER: SI | NO
+MOTIVO: <una o dos frases: qué ha cambiado (o no) desde la compra y por qué>
+[[FIN]]
 
 Datos (generados automáticamente; "n/d" = no disponible):
 """

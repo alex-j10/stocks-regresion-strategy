@@ -30,6 +30,7 @@
       <input id="q" type="search" placeholder="Buscar ticker o empresa" autocomplete="off">
       <select id="sector"><option value="">Todos los sectores</option></select>
       <button id="copy-signals" class="btn primary">Copiar prompt de señales</button>
+      <button id="paste-signals" class="btn">Pegar respuesta de la IA</button>
       <a class="btn" href="data/resumen.csv" download>CSV</a>
     </div>
     <p id="tab-help" class="help muted small"></p>
@@ -46,6 +47,7 @@
           <th data-k="base" class="num hide-s">Recta</th>
           <th data-k="trend_pct" class="num hide-m">Tend./año</th>
           <th data-k="signal">Señal</th>
+          <th title="Veredicto de tu IA">IA</th>
           <th data-k="riesgo_quiebra" class="hide-s">Quiebra</th>
         </tr></thead>
         <tbody></tbody>
@@ -61,6 +63,7 @@
     <div class="toolbar">
       <button id="wl-add" class="btn primary">+ Añadir posición</button>
       <button id="copy-review" class="btn">Copiar prompt de revisión</button>
+      <button id="paste-review" class="btn">Pegar revisión de la IA</button>
       <button id="wl-settings" class="btn">Sincronización</button>
     </div>
     <h3 class="sub">Abiertas</h3>
@@ -102,6 +105,7 @@
     <div id="chart-sigma" class="chart small-chart"></div>
     <p class="muted small" id="d-tv"></p>
     <section id="d-fund"></section>
+    <section id="d-verdict"></section>
   </div>
 </div>
 

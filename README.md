@@ -34,6 +34,31 @@ Cada día laborable, después del cierre de Wall Street, GitHub ejecuta el proce
 
 Para añadir una posición, usa la estrella ☆ de la tabla, el botón de la ficha de la empresa o «+ Añadir posición».
 
+## Veredicto de la IA en 1–2 frases
+
+Los prompts piden a tu IA que termine cada empresa con un bloque fijo:
+
+```
+[[VEREDICTO]]
+TICKER: MCD
+CAIDA: TEMPORAL | PERMANENTE | DUDOSA
+QUIEBRA: BAJO | MEDIO | ALTO
+LUZ_VERDE: SI | NO          (en la revisión: CAMBIO y MANTENER)
+MOTIVO: …
+[[FIN]]
+```
+
+Pega la respuesta completa en la ficha de la empresa («Veredicto de tu IA») o con el botón «Pegar respuesta de la IA». El portal la cruza con el indicador y te resume la decisión:
+
+- ✅ **Comprar**: en zona de compra y con luz verde.
+- ⚠️ **Comprar con cautela**: en zona de compra, pero la IA tiene dudas; mejor una posición pequeña.
+- ⏳ **Esperar a −4σ** o **Sin señal**: los fundamentales están bien, pero el precio aún no está en zona de compra.
+- ❌ **No comprar**: caída permanente, riesgo de quiebra o sin luz verde.
+
+En las posiciones abiertas, el resumen es 🟢 **Mantener** o 🔴 **Vender**. Al guardar el veredicto, la posición queda marcada como revisada.
+
+Los veredictos se guardan en `watchlist.json` (sincronizados) y aparecen como icono en la columna **IA**. Si el icono sale atenuado, el veredicto tiene más de 3 meses.
+
 ## Puesta en marcha (una sola vez)
 
 1. Crea un repositorio en GitHub (por ejemplo `stocks-regresion-strategy`). En el plan gratuito, GitHub Pages solo funciona con repositorios **públicos**. Lee la nota de privacidad más abajo.

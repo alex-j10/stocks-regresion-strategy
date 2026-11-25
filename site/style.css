@@ -120,3 +120,12 @@ tr.hit td{background:rgba(63,185,80,.06)}
 .menu .btn{text-align:left}
 code{background:var(--bg);padding:1px 5px;border-radius:4px}
 @media (max-width:600px){.row2{grid-template-columns:1fr}.wl-kpis{display:grid;grid-template-columns:repeat(3,1fr)}.wl-kpis .kpi{min-width:0}}
+/* ---- veredictos de la IA ---- */
+.vbox{margin-top:16px}
+.vbox textarea,.modal-card textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;resize:vertical}
+.verdict{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:10px 12px;margin:8px 0;background:var(--panel2)}
+.verdict p{margin:6px 0 0;font-size:13px}
+.verdict .v-title{font-weight:650}
+.verdict.good{border-left-color:var(--green)} .verdict.bad{border-left-color:var(--red)}
+.verdict.warn{border-left-color:var(--yellow)} .verdict.wait{border-left-color:var(--blue)}
+.vcol{text-align:center} .vicon{cursor:help} .vicon.old{opacity:.45}

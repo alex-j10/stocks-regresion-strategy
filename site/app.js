@@ -203,6 +203,7 @@
         <td class="num hide-s">${fmt(r.base)}</td>
         <td class="num hide-m ${r.trend_pct <= 0 ? "neg" : ""}">${pct(r.trend_pct / 100)}</td>
         <td>${signalBadge(r)}</td>
+        <td class="vcol">${verdictIcon(r.ticker)}</td>
         <td class="hide-s">${risk}</td></tr>`;
     }).join("");
     const empty = list.length === 0;
@@ -240,7 +241,7 @@
       const status = st.error ? `<span class="muted small">${esc(st.error)}</span>`
         : st.target_hit_date ? `<span class="badge buy" title="Tocó la recta a ${fmt(st.target_hit_price)} el ${esc(st.target_hit_date)}">🎯 Recta<span class="hide-s"> ${esc(st.target_hit_date)}</span></span>`
         : st.note ? `<span class="muted small">${esc(st.note)}</span>` : `<span class="muted">En curso</span>`;
-      const rev = st.review_due ? `<span class="badge watch">Pendiente</span>` : `<span class="muted small">${esc(st.next_review)}</span>`;
+      const rev = (st.review_due ? `<span class="badge watch">Pendiente</span>` : `<span class="muted small">${esc(st.next_review)}</span>`) + " " + (savedVerdict(p.ticker) ? verdictIcon(p.ticker) : "");
       return `<tr data-t="${esc(p.ticker)}" class="${st.target_hit_date ? "hit" : ""}">
         <td class="tk">${esc(p.ticker)}${st.pending ? `<span class="tag" title="Métricas aproximadas hasta la próxima actualización">nuevo</span>` : ""}</td>
         <td class="num hide-s">${fmt(p.entry_price)}<br><span class="muted small">${esc(p.entry_date)}</span></td>
@@ -289,7 +290,7 @@
 
   function positionForm(p, prefill = {}) {
     const isNew = !p;
-    p = p || { id: uid(), ticker: prefill.ticker || "", entry_date: today(), entry_price: prefill.price ?? "", weight_pct: 5, notes: "", status: "open" };
+    p = p || { id: uid(), ticker: prefill.ticker || "", entry_date: today(), entry_price: prefill.price ?? "", weight_pct: 5, notes: prefill.notes || "", status: "open" };
     const tickers = state.data.rows.map((r) => `<option value="${esc(r.ticker)}">${esc(r.name)}</option>`).join("");
     modal(`
       <h3>${isNew ? "Añadir al watchlist" : "Editar posición"}</h3>
@@ -346,7 +347,8 @@
       <div class="menu">
         <button type="button" class="btn" data-m="view">Ver gráfico y fundamentales</button>
         ${open ? `<button type="button" class="btn" data-m="review">Copiar prompt de revisión para la IA</button>
-        <button type="button" class="btn" data-m="reviewed">Marcar revisada hoy</button>
+        <button type="button" class="btn" data-m="paste">Pegar la revisión de la IA</button>
+        <button type="button" class="btn" data-m="reviewed">Marcar revisada hoy (sin pegar)</button>
         <button type="button" class="btn" data-m="close">Cerrar posición (vender)</button>` : `<button type="button" class="btn" data-m="reopen">Reabrir</button>`}
         <button type="button" class="btn" data-m="edit">Editar</button>
         <button type="button" class="btn danger" data-m="delete">Eliminar</button>
@@ -358,6 +360,7 @@
       if (m === "edit") positionForm(p);
       if (m === "close") closeForm(p);
       if (m === "review") { closeModal(); await copyReview(p.ticker); }
+      if (m === "paste") { closeModal(); location.hash = "#/t/" + encodeURIComponent(p.ticker); setTimeout(() => $("#v-text")?.focus(), 900); }
       if (m === "reviewed") { const prev = p.last_review; p.last_review = today(); closeModal(); await WL.save(`Revisión de ${p.ticker}`).catch(() => (p.last_review = prev)); renderAll(); }
       if (m === "reopen") { const prev = { ...p }; p.status = "open"; delete p.exit_date; delete p.exit_price; closeModal(); await WL.save(`Reabrir ${p.ticker}`).catch(() => Object.assign(p, prev)); renderAll(); }
       if (m === "delete") {
@@ -373,6 +376,153 @@
     if (!r?.has_fundamentals) { toast("Aún no hay datos de esta empresa: aparecerán tras la próxima actualización"); return; }
     const f = await getJSON(`data/f/${encodeURIComponent(ticker)}.json`);
     copy(f.ai_prompt_review || f.ai_prompt);
+  }
+
+
+  // ================================================================ veredictos de la IA
+  const norm = (x) => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[*_`#>]/g, "").trim().toUpperCase();
+  const pick = (val, opts) => { const n = norm(val); return opts.find((o) => n.startsWith(o)) || opts.find((o) => n.includes(o)) || null; };
+  const yes = (val) => { const n = norm(val); if (!n) return null; if (/^(SI|YES|S$)/.test(n)) return true; if (/^NO/.test(n)) return false; return null; };
+
+  function parseVerdicts(text, fallbackTicker) {
+    const out = [];
+    const re = /\[\[\s*VEREDICTO\s*\]\]([\s\S]*?)(?=\[\[\s*FIN\s*\]\]|\[\[\s*VEREDICTO\s*\]\]|$)/gi;
+    let m;
+    while ((m = re.exec(text)) && m[0].length) {
+      const v = {};
+      m[1].split(/\r?\n/).forEach((line) => {
+        const mm = line.match(/^[\s*_>\-•]*([A-Za-zÁÉÍÓÚÑáéíóúñ_ ]{3,20}?)[\s*_]*:\s*(.+)$/);
+        if (mm) v[norm(mm[1]).replace(/\s+/g, "_")] = mm[2].replace(/[*_`]/g, "").trim();
+      });
+      const t = norm(v.TICKER || fallbackTicker).replace(/[^A-Z0-9.\-]/g, "");
+      if (!t) continue;
+      out.push({ ticker: t, caida: pick(v.CAIDA, ["TEMPORAL", "PERMANENTE", "DUDOSA"]), quiebra: pick(v.QUIEBRA, ["BAJO", "MEDIO", "ALTO"]),
+        luz: yes(v.LUZ_VERDE), mantener: yes(v.MANTENER), cambio: yes(v.CAMBIO), motivo: (v.MOTIVO || "").trim() });
+    }
+    if (!out.length && fallbackTicker) {  // la IA no añadió el bloque: busco "luz verde: sí/no"
+      const lv = text.match(/luz\s*verde[^a-zA-Z\n]{0,6}(s[ií]|no)(?![a-zA-Z])/i);
+      const mt = text.match(/mantener[^a-zA-Z\n]{0,6}(s[ií]|no)(?![a-zA-Z])/i);
+      if (lv || mt) out.push({ ticker: fallbackTicker, caida: null, quiebra: null, luz: lv ? yes(lv[1]) : null,
+        mantener: mt ? yes(mt[1]) : null, cambio: null, motivo: "", approx: true });
+    }
+    return out;
+  }
+
+  // Cruza el veredicto con el indicador (o con la posición abierta) y lo resume en 1-2 frases
+  function decide(v, row, pos) {
+    const desc = [v.caida && `caída ${v.caida.toLowerCase()}`, v.quiebra && `riesgo de quiebra ${v.quiebra.toLowerCase()}`].filter(Boolean).join(", ");
+    const bad = v.caida === "PERMANENTE" || v.quiebra === "ALTO";
+    const caution = v.caida === "DUDOSA" || v.quiebra === "MEDIO";
+    if (pos) {
+      if (v.mantener === false || (v.mantener == null && (bad || v.luz === false)) || bad)
+        return { level: "bad", icon: "🔴", title: "Vender", text: `Tu IA cree que la tesis ha cambiado${desc ? ` (${desc})` : ""}. Según la estrategia, es el único motivo para vender aunque sea con pérdidas.` };
+      const target = row ? ` Sigue el objetivo: la recta en ${fmt(row.base)} $ (${pct(row.base / row.close - 1)}).` : "";
+      if (caution) return { level: "warn", icon: "🟠", title: "Mantener, pero vigila", text: `No hay motivo para vender, aunque hay dudas${desc ? ` (${desc})` : ""}; adelanta la próxima revisión.${target}` };
+      return { level: "good", icon: "🟢", title: "Mantener", text: `La tesis sigue intacta${desc ? ` (${desc})` : ""}.${target}` };
+    }
+    if (v.luz === false || bad)
+      return { level: "bad", icon: "❌", title: "No comprar", text: `Aunque esté barata, tu IA ve ${desc || "señales de daño permanente o de riesgo financiero"}: puede ser una empresa en declive, no una oportunidad.` };
+    const ok = v.luz === true || (v.luz == null && v.caida === "TEMPORAL" && v.quiebra === "BAJO");
+    if (!ok) return { level: "warn", icon: "⚠️", title: "Veredicto poco claro", text: "La respuesta no deja claro si hay luz verde. Pídele a tu IA que complete el bloque [[VEREDICTO]]." };
+    if (!row) return { level: "warn", icon: "⏳", title: "Fundamentales bien", text: "Tu IA da luz verde, pero esta empresa no está en el portal y no puedo comprobar el indicador." };
+    const where = `${sigTxt(row.sigma)}σ`;
+    if (row.signal === "compra") {
+      if (caution) return { level: "warn", icon: "⚠️", title: "Comprar con cautela", text: `Está en zona de compra (${where}) y tu IA da luz verde, pero con dudas (${desc}). Si entras, mejor con una posición pequeña (≈5 %).` };
+      return { level: "good", icon: "✅", title: "Comprar", text: `Está en zona de compra (${where}; compra en ${fmt(row.buy_sigma, 0)}σ) y tu IA ve una caída temporal sin riesgo de quiebra. Entre el 5 % y el 10 % de la cartera; objetivo: la recta en ${fmt(row.base)} $ (${pct(row.base / row.close - 1)}).` };
+    }
+    if (row.signal === "vigilar")
+      return { level: "wait", icon: "⏳", title: "Esperar a −4σ", text: `Los fundamentales dan luz verde, pero al no ser Top ${state.cfg.top_tier_count} la estrategia espera a −4σ: ${fmt(row.bands["-4"])} $ (${pct(row.bands["-4"] / row.close - 1)} desde el precio actual).` };
+    if (row.signal === "descartada" || row.excluded?.length)
+      return { level: "bad", icon: "⛔", title: "No cumple las reglas", text: `Los fundamentales están bien, pero se descarta por: ${row.excluded.join("; ")}.` };
+    return { level: "wait", icon: "⏳", title: "Sin señal", text: `Los fundamentales están bien, pero el precio (${where}) no está en zona de compra (${fmt(row.buy_sigma, 0)}σ).` };
+  }
+
+  const savedVerdict = (t) => (WL.data.verdicts || {})[t];
+  function verdictIcon(t) {
+    const v = savedVerdict(t);
+    if (!v) return `<span class="muted">—</span>`;
+    const d = decide(v, state.byTicker[t], v.kind === "revision" ? WL.byTicker(t) : null);
+    const old = (Date.now() - new Date(v.date)) / 864e5 > (state.cfg.review_days || 90);
+    return `<span class="vicon ${old ? "old" : ""}" title="${esc(d.title)} · ${esc(v.date)}${v.motivo ? " · " + esc(v.motivo) : ""}">${d.icon}</span>`;
+  }
+
+  function verdictHTML(v, d, row, pos) {
+    return `<div class="verdict ${d.level}">
+      <div class="v-title">${d.icon} ${esc(d.title)} <span class="muted small">${esc(v.ticker)}${v.date ? " · " + esc(v.date) : ""}${v.approx ? " · interpretado sin bloque" : ""}</span></div>
+      <p>${esc(d.text)}</p>
+      ${v.motivo ? `<p class="muted small">IA: «${esc(v.motivo)}»</p>` : ""}
+    </div>`;
+  }
+
+  async function saveVerdicts(list, kind) {
+    WL.data.verdicts ||= {};
+    const date = today();
+    list.forEach((v) => {
+      WL.data.verdicts[v.ticker] = { ...v, kind, date };
+      const p = WL.byTicker(v.ticker);
+      if (p && kind === "revision") {
+        p.last_review = date;
+        (p.reviews ||= []).push({ date, caida: v.caida, quiebra: v.quiebra, mantener: v.mantener, motivo: v.motivo });
+      }
+    });
+    await WL.save(`Veredicto de la IA: ${list.map((v) => v.ticker).join(", ")}`);
+    renderAll();
+  }
+
+  // Ficha de empresa: caja para pegar la respuesta
+  function renderVerdictBox(r) {
+    const pos = WL.byTicker(r.ticker);
+    const kind = pos ? "revision" : "entrada";
+    const sv = savedVerdict(r.ticker);
+    $("#d-verdict").innerHTML = `
+      <div class="card vbox">
+        <h3>${pos ? "Revisión de tu IA" : "Veredicto de tu IA"}</h3>
+        <div id="v-saved">${sv ? verdictHTML(sv, decide(sv, r, sv.kind === "revision" ? pos : null), r, pos) : `<p class="muted small">1) Copia el análisis con el botón de arriba · 2) pégalo en tu IA con búsqueda web · 3) pega aquí su respuesta completa.</p>`}</div>
+        <textarea id="v-text" rows="4" placeholder="Pega aquí la respuesta de tu IA…"></textarea>
+        <div class="ai-row"><button class="btn primary" id="v-go">Interpretar</button><span id="v-msg" class="muted small"></span></div>
+        <div id="v-result"></div>
+      </div>`;
+    $("#v-go").onclick = () => {
+      const list = parseVerdicts($("#v-text").value, r.ticker).filter((v) => v.ticker === r.ticker);
+      if (!list.length) { $("#v-msg").textContent = "No encuentro el bloque [[VEREDICTO]]. Copia la respuesta completa o pide a tu IA que lo añada."; return; }
+      const v = list[list.length - 1];
+      const d = decide(v, r, pos);
+      $("#v-msg").textContent = "";
+      $("#v-result").innerHTML = verdictHTML({ ...v, date: "" }, d, r, pos) + `<div class="ai-row">
+        <button class="btn" id="v-save">${pos ? "Guardar y marcar revisada" : "Guardar veredicto"}</button>
+        ${!pos && d.level === "good" || !pos && d.level === "warn" && d.title.startsWith("Comprar") ? `<button class="btn primary" id="v-add">Guardar y añadir al watchlist</button>` : ""}
+        ${pos && d.level === "bad" ? `<button class="btn danger" id="v-close">Guardar y cerrar posición</button>` : ""}</div>`;
+      $("#v-save").onclick = async () => { await saveVerdicts([v], kind); renderVerdictBox(r); };
+      $("#v-add")?.addEventListener("click", async () => {
+        await saveVerdicts([v], kind);
+        positionForm(null, { ticker: r.ticker, price: r.close.toFixed(2), notes: v.motivo });
+      });
+      $("#v-close")?.addEventListener("click", async () => { await saveVerdicts([v], kind); closeForm(pos); });
+    };
+  }
+
+  // Pegar la respuesta con varias empresas (señales o revisión trimestral)
+  function pasteModal(kind) {
+    modal(`
+      <h3>${kind === "revision" ? "Pegar la revisión de tu IA" : "Pegar la respuesta de tu IA"}</h3>
+      <p class="small muted">Pega la respuesta completa. Leo los bloques [[VEREDICTO]] de cada empresa y los cruzo con el indicador${kind === "revision" ? " y con tus posiciones" : ""}.</p>
+      <textarea name="text" rows="8" placeholder="Pega aquí…"></textarea>
+      <div id="pm-result"></div>
+      <div class="modal-actions"><button type="button" class="btn" data-cancel>Cerrar</button>
+        <button type="button" class="btn" id="pm-go">Interpretar</button>
+        <button type="submit" class="btn primary" id="pm-save" disabled>Guardar veredictos</button></div>`,
+      async () => { await saveVerdicts(pending, kind); });
+    let pending = [];
+    $("#pm-go").onclick = () => {
+      pending = parseVerdicts($("#modal-form textarea").value);
+      const res = $("#pm-result");
+      if (!pending.length) { res.innerHTML = `<p class="neg small">No encuentro ningún bloque [[VEREDICTO]]. ¿Has copiado la respuesta completa?</p>`; return; }
+      res.innerHTML = pending.map((v) => {
+        const pos = kind === "revision" ? WL.byTicker(v.ticker) : null;
+        return verdictHTML({ ...v, date: "" }, decide(v, state.byTicker[v.ticker], pos), state.byTicker[v.ticker], pos);
+      }).join("");
+      $("#pm-save").disabled = false;
+    };
   }
 
   function openSettings() {
@@ -426,6 +576,7 @@
     ].map(([k, v]) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`).join("");
     $("#d-tv").textContent = `Comprobación en TradingView: gráfico diario de ${r.ticker}, «Standard Deviation Channel» con Length 2500 y desviaciones inferiores 3 y 4.`;
     $("#d-fund").innerHTML = "";
+    renderVerdictBox(r);
 
     const ts = await getJSON(`data/t/${encodeURIComponent(r.ticker)}.json`);
     drawCharts(ts, pos);
@@ -569,6 +720,8 @@
     if (tr && !e.target.closest("button,a")) location.hash = "#/t/" + encodeURIComponent(tr.dataset.t);
   });
   $("#wl-add").addEventListener("click", () => positionForm(null));
+  $("#paste-signals").addEventListener("click", () => pasteModal("entrada"));
+  $("#paste-review").addEventListener("click", () => pasteModal("revision"));
   $("#wl-settings").addEventListener("click", openSettings);
   $("#copy-review").addEventListener("click", async () => copy(await (await fetch("data/prompt_revision.txt", { cache: "no-store" })).text()));
   $("#copy-signals").addEventListener("click", async () => copy(await (await fetch("data/prompt_senales.txt", { cache: "no-store" })).text()));
