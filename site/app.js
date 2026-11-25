@@ -392,12 +392,12 @@
       const v = {};
       m[1].split(/\r?\n/).forEach((line) => {
         const mm = line.match(/^[\s*_>\-•]*([A-Za-zÁÉÍÓÚÑáéíóúñ_ ]{3,20}?)[\s*_]*:\s*(.+)$/);
-        if (mm) v[norm(mm[1]).replace(/\s+/g, "_")] = mm[2].replace(/[*_`]/g, "").trim();
+        if (mm) v[norm(mm[1]).replace(/[\s_]+/g, "")] = mm[2].replace(/[*`]/g, "").trim();
       });
       const t = norm(v.TICKER || fallbackTicker).replace(/[^A-Z0-9.\-]/g, "");
       if (!t) continue;
       out.push({ ticker: t, caida: pick(v.CAIDA, ["TEMPORAL", "PERMANENTE", "DUDOSA"]), quiebra: pick(v.QUIEBRA, ["BAJO", "MEDIO", "ALTO"]),
-        luz: yes(v.LUZ_VERDE), mantener: yes(v.MANTENER), cambio: yes(v.CAMBIO), motivo: (v.MOTIVO || "").trim() });
+        luz: yes(v.LUZVERDE), mantener: yes(v.MANTENER), cambio: yes(v.CAMBIO), motivo: (v.MOTIVO || "").trim() });
     }
     if (!out.length && fallbackTicker) {  // la IA no añadió el bloque: busco "luz verde: sí/no"
       const lv = text.match(/luz\s*verde[^a-zA-Z\n]{0,6}(s[ií]|no)(?![a-zA-Z])/i);
