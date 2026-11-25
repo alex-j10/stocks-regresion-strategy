@@ -1,0 +1,22 @@
+{
+  "min_market_cap_usd": 50000000000,
+  "length_bars": 2500,
+  "download_years": 15,
+  "sigma_history_years": 5,
+  "bands_up": [1, 2],
+  "bands_down": [3, 4],
+  "top_tier_count": 10,
+  "buy_sigma_top_tier": -3,
+  "buy_sigma_other": -4,
+  "watch_sigma": -3,
+  "min_trend_annual_pct": 0,
+  "exclude_if_buy_band_below_zero": true,
+  "exclude_adrs": false,
+  "only_us_country": false,
+  "review_days": 90,
+  "max_weight_pct": 10,
+  "max_positions": 20,
+  "max_news_per_company": 8,
+  "github_issue_alerts": true,
+  "custom_domain": ""
+}

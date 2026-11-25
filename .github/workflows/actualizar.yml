@@ -1,0 +1,58 @@
+name: Actualizar portal
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # 22:30 UTC, tras el cierre de Wall Street
+  workflow_dispatch:           # botón "Run workflow" para lanzarlo a mano
+  push:
+    branches: [main]           # incluye los cambios del watchlist hechos desde la web
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python tests/test_indicator.py
+      - name: Generar portal
+        run: python scripts/build.py --out dist
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      - name: Avisos (issues → email)
+        if: ${{ hashFiles('dist/data/alerts.json') != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if python -c "import json,sys;sys.exit(0 if json.load(open('config.json')).get('github_issue_alerts') else 1)"; then
+            python scripts/alerts.py dist/data/alerts.json
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

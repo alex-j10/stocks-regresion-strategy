@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bandas de regresión · EE. UU. > 50.000 M$</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M1 13 15 3' stroke='%234c9aff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Bandas de regresión <span>2500 sesiones</span></h1>
+    <p id="meta" class="muted">Cargando…</p>
+  </div>
+  <div class="kpis" id="kpis"></div>
+</header>
+<div id="demo-banner" class="banner" hidden>Datos de demostración inventados: no son cotizaciones reales.</div>
+
+<main>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="signals" role="tab">Señales <b id="n-signals">0</b></button>
+    <button class="tab" data-tab="watch" role="tab">Watchlist <b id="n-watch">0</b></button>
+    <button class="tab" data-tab="all" role="tab">Todas <b id="n-all">0</b></button>
+    <button class="tab" data-tab="excluded" role="tab">Descartadas <b id="n-excluded">0</b></button>
+  </nav>
+
+  <section id="view-list">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Buscar ticker o empresa" autocomplete="off">
+      <select id="sector"><option value="">Todos los sectores</option></select>
+      <button id="copy-signals" class="btn primary">Copiar prompt de señales</button>
+      <a class="btn" href="data/resumen.csv" download>CSV</a>
+    </div>
+    <p id="tab-help" class="help muted small"></p>
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead><tr>
+          <th class="star-col"></th>
+          <th data-k="ticker">Ticker</th>
+          <th data-k="name" class="hide-s">Empresa</th>
+          <th data-k="tier_rank" class="num hide-m">Rango</th>
+          <th data-k="close" class="num">Precio</th>
+          <th data-k="sigma" class="num">σ</th>
+          <th class="hide-m">Posición</th>
+          <th data-k="base" class="num hide-s">Recta</th>
+          <th data-k="trend_pct" class="num hide-m">Tend./año</th>
+          <th data-k="signal">Señal</th>
+          <th data-k="riesgo_quiebra" class="hide-s">Quiebra</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" class="empty" hidden></p>
+    </div>
+    <details id="short-box" class="short muted small" hidden><summary></summary><p id="short-list"></p></details>
+  </section>
+
+  <section id="view-watch" hidden>
+    <div id="sync-bar" class="sync"></div>
+    <div class="wl-kpis" id="wl-kpis"></div>
+    <div class="toolbar">
+      <button id="wl-add" class="btn primary">+ Añadir posición</button>
+      <button id="copy-review" class="btn">Copiar prompt de revisión</button>
+      <button id="wl-settings" class="btn">Sincronización</button>
+    </div>
+    <h3 class="sub">Abiertas</h3>
+    <div class="table-wrap">
+      <table id="wl-open">
+        <thead><tr>
+          <th>Ticker</th><th class="num hide-s">Entrada</th><th class="num">Precio</th><th class="num">Resultado</th>
+          <th class="num hide-s">σ</th><th class="num hide-m">Recta</th><th class="num hide-s">A la recta</th>
+          <th>Estado</th><th class="hide-m">Revisión</th><th class="num hide-m">Peso</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="wl-empty" class="empty" hidden>Todavía no tienes posiciones. Abre una empresa y pulsa «Añadir al watchlist», o usa la estrella ☆ de la tabla.</p>
+    </div>
+    <h3 class="sub">Cerradas</h3>
+    <div class="table-wrap">
+      <table id="wl-closed">
+        <thead><tr><th>Ticker</th><th class="num">Entrada</th><th class="num">Salida</th><th class="num">Resultado</th><th class="num hide-s">Días</th><th class="hide-s">Notas</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div id="detail" class="detail" hidden>
+  <div class="detail-inner">
+    <div class="detail-head">
+      <div>
+        <h2 id="d-title"></h2>
+        <p id="d-sub" class="muted"></p>
+      </div>
+      <button id="d-close" class="btn icon" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="d-rules" class="rules"></div>
+    <div class="stats" id="d-stats"></div>
+    <div class="legend" id="d-legend"></div>
+    <div id="chart" class="chart"></div>
+    <h3 class="sub">σ histórica <span class="muted small">(canal recalculado cada día, como el replay de TradingView)</span></h3>
+    <div id="chart-sigma" class="chart small-chart"></div>
+    <p class="muted small" id="d-tv"></p>
+    <section id="d-fund"></section>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <form id="modal-form" class="modal-card" autocomplete="off"></form>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<footer class="muted small">
+  Indicador: réplica del «Standard Deviation Channel» (regresión lineal del cierre sobre 2500 sesiones diarias, σ de los residuos).
+  Reglas: Top 10 compra en −3σ y el resto en −4σ; salida en la recta; sin stop loss; revisión de fundamentales cada 3 meses.
+  Datos: Yahoo Finance, Nasdaq y SEC. No es una recomendación de inversión.
+  Gráficos: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a>.
+</footer>
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
